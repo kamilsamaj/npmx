@@ -58,21 +58,85 @@ function create_symlinks() {
             echo "WARNING: File $dst_bin_dir/$short_bin_file already exists, not creating a symlink"
         fi
     done
-
 }
+
+# unlink previous symbolic links
+# usage: unlink_symlinks $SRC_BIN_DIR $DST_BIN_DIR
+function unlink_symlinks() {
+    local src_bin_dir
+    local dst_bin_dir
+    local bin_file
+    local short_bin_file
+
+    src_bin_dir="$1"
+    dst_bin_dir="$2"
+
+    if [[ ! -d "$src_bin_dir" ]]; then
+        echo "ERROR: $src_bin_dir does not exit, exiting ..."
+        exit 1
+    fi
+
+    if [[ ! -d "$dst_bin_dir" ]]; then
+        echo "ERROR: $dst_bin_dir does not exit, exiting ..."
+        exit 1
+    fi
+
+    for bin_file in "$src_bin_dir"/*; do
+        short_bin_file="$(basename $bin_file)"
+        if [[ -f "$dst_bin_dir/$short_bin_file" ]]; then
+            unlink "$dst_bin_dir/$short_bin_file"
+        else
+            echo "WARNING: Symbolic linke to $dst_bin_dir/$short_bin_file does not exist, not unlinking"
+        fi
+    done
+}
+
 
 # usage:
 # install npm_package_name
 function install() {
+
     # create a separate directory for each npm package
     local npmx_pkg_name
     npmx_pkg_name="$1"
     mkdir -p "$NPMX_BASE_DIR/npms/$npmx_pkg_name"
 
+    if [[ -d "$NPMX_BASE_DIR/npms/$npmx_pkg_name/node_modules/.bin" ]]; then
+        echo "ERROR: $npmx_pkg_name already installed, run '$0 update ...' instead. Exiting ..."
+        usage
+        exit 1
+    fi
     # run in a sub-shell to return back
     ( \
         cd "$NPMX_BASE_DIR/npms/$npmx_pkg_name"; \
         npm install "$npmx_pkg_name"; \
+        create_symlinks \
+            "$NPMX_BASE_DIR/npms/$npmx_pkg_name/node_modules/.bin" \
+            "$NPMX_BASE_DIR/bin"
+    )
+}
+
+# update an installed npmx
+function update() {
+    local npmx_pkg_name
+    npmx_pkg_name="$1"
+
+    if [[ ! -d "$NPMX_BASE_DIR/npms/$npmx_pkg_name/node_modules/.bin" ]]; then
+        echo "ERROR: $npmx_pkg_name NOT installed, run '$0 install ...' instead. Exiting ..."
+        usage
+        exit 1
+    fi
+
+    # unlink all previous links to NOT have stalled links
+    unlink_symlinks \
+            "$NPMX_BASE_DIR/npms/$npmx_pkg_name/node_modules/.bin" \
+            "$NPMX_BASE_DIR/bin"
+
+    # run in a sub-shell to return back
+    ( \
+        cd "$NPMX_BASE_DIR/npms/$npmx_pkg_name"; \
+        echo "Updating $npmx_pkg_name"
+        npm update "$npmx_pkg_name"; \
         create_symlinks \
             "$NPMX_BASE_DIR/npms/$npmx_pkg_name/node_modules/.bin" \
             "$NPMX_BASE_DIR/bin"
@@ -86,7 +150,6 @@ if [[ $# -ne 2 ]]; then
     exit 1
 fi
 
-
 NPMX_COMMAND="$1"
 NPMX_PACKAGE_NAME="$2"
 
@@ -96,9 +159,10 @@ check_npmx_is_in_path
 
 if [[ "$NPMX_COMMAND" = "install" ]]; then
     install "$NPMX_PACKAGE_NAME"
+elif [[ "$NPMX_COMMAND" = "update" ]]; then
+    update "$NPMX_PACKAGE_NAME"
 else
     echo "Command $1 not recognized" >&2
     usage
     exit 1
 fi
-

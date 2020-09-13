@@ -21,8 +21,13 @@ function check_npmx_is_in_path() {
 # print help message
 function usage() {
 cat << EOF
-    Usage: $0 install <npm_package_name>
-        - npm_package_name: Name of a valid npm package name
+    Usage: $0 {install, uninstall, update, help} <npm_package_name>
+
+    Subcommands:
+        install             Install a new NPM package to it's own subdirectory
+        update              Update an existing NPMX installation
+        uninstall           Uninstall an existing NPMX installation
+        help                Print this help message
 EOF
 }
 
@@ -91,9 +96,7 @@ function unlink_symlinks() {
     done
 }
 
-
-# usage:
-# install npm_package_name
+# usage: update $NPMX_PKG_NAME
 function install() {
 
     # create a separate directory for each npm package
@@ -117,6 +120,7 @@ function install() {
 }
 
 # update an installed npmx
+# usage: update $NPMX_PKG_NAME
 function update() {
     local npmx_pkg_name
     npmx_pkg_name="$1"
@@ -135,11 +139,38 @@ function update() {
     # run in a sub-shell to return back
     ( \
         cd "$NPMX_BASE_DIR/npms/$npmx_pkg_name"; \
-        echo "Updating $npmx_pkg_name"
+        echo "Updating $npmx_pkg_name"; \
         npm update "$npmx_pkg_name"; \
         create_symlinks \
             "$NPMX_BASE_DIR/npms/$npmx_pkg_name/node_modules/.bin" \
             "$NPMX_BASE_DIR/bin"
+    )
+}
+
+# uninstall an installed npmx
+# usage: uninstall $NPMX_PKG_NAME
+function uninstall() {
+    local npmx_pkg_name
+    npmx_pkg_name="$1"
+
+    if [[ ! -d "$NPMX_BASE_DIR/npms/$npmx_pkg_name/node_modules/.bin" ]]; then
+        echo "ERROR: $npmx_pkg_name NOT installed. Exiting ..."
+        usage
+        exit 1
+    fi
+
+    # unlink all previous links
+    unlink_symlinks \
+            "$NPMX_BASE_DIR/npms/$npmx_pkg_name/node_modules/.bin" \
+            "$NPMX_BASE_DIR/bin"
+
+    # run in a sub-shell to return back
+    ( \
+        cd "$NPMX_BASE_DIR/npms/$npmx_pkg_name"; \
+        echo "Updating $npmx_pkg_name"; \
+        npm uninstall "$npmx_pkg_name"; \
+        echo "Removing $NPMX_BASE_DIR/npms/$npmx_pkg_name directory"; \
+        rm -rf "$NPMX_BASE_DIR/npms/$npmx_pkg_name"
     )
 }
 
@@ -157,10 +188,15 @@ NPMX_PACKAGE_NAME="$2"
 check_npmx_base_dir
 check_npmx_is_in_path
 
+# run command handler
 if [[ "$NPMX_COMMAND" = "install" ]]; then
     install "$NPMX_PACKAGE_NAME"
 elif [[ "$NPMX_COMMAND" = "update" ]]; then
     update "$NPMX_PACKAGE_NAME"
+elif [[ "$NPMX_COMMAND" = "uninstall" ]]; then
+    uninstall "$NPMX_PACKAGE_NAME"
+elif [[ "NPMX_COMMAND" = "help" ]] || [[ "NPMX_COMMAND" = "--help" ]]; then
+    usage
 else
     echo "Command $1 not recognized" >&2
     usage

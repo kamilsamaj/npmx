@@ -106,7 +106,6 @@ function install() {
 
     if [[ -d "$NPMX_BASE_DIR/npms/$npmx_pkg_name/node_modules/.bin" ]]; then
         echo "ERROR: $npmx_pkg_name already installed, run '$0 update ...' instead. Exiting ..."
-        usage
         exit 1
     fi
     # run in a sub-shell to return back
@@ -127,7 +126,6 @@ function update() {
 
     if [[ ! -d "$NPMX_BASE_DIR/npms/$npmx_pkg_name/node_modules/.bin" ]]; then
         echo "ERROR: $npmx_pkg_name NOT installed, run '$0 install ...' instead. Exiting ..."
-        usage
         exit 1
     fi
 
@@ -155,7 +153,6 @@ function uninstall() {
 
     if [[ ! -d "$NPMX_BASE_DIR/npms/$npmx_pkg_name/node_modules/.bin" ]]; then
         echo "ERROR: $npmx_pkg_name NOT installed. Exiting ..."
-        usage
         exit 1
     fi
 

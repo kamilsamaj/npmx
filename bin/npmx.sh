@@ -1,14 +1,24 @@
 #!/bin/bash -e
 
-NPMX_BASE_DIR="$HOME/npmx"
+NPMX_BASE_DIR="$HOME/.npmx"
 
 function check_npmx_base_dir() {
     if [[ ! -d "$NPMX_BASE_DIR" ]]; then
         echo "Creating npmx base directory $NPMX_BASE_DIR"
-        mkdir -p "$NPMX_BASE_DIR/{bin,npms}"
+        mkdir -p "$NPMX_BASE_DIR"/{bin,npms}
     fi
 }
 
+# check if $PATH variable contains $NPMX_BASE_DIR/bin
+function check_npmx_is_in_path() {
+    if [[ ! ":$PATH:" == *":$NPMX_BASE_DIR/bin:"* ]]; then
+        echo "Your path is missing $NPMX_BASE_DIR/bin, please add it with:"
+        echo "    export PATH=\"\$PATH:$NPMX_BASE_DIR/bin\"."
+        exit 1
+    fi
+}
+
+# print help message
 function usage() {
 cat << EOF
     Usage: $0 install <npm_package_name>
@@ -16,8 +26,39 @@ cat << EOF
 EOF
 }
 
+# create symbolic links with available CLI commands in node_modules/.bin directory
+# usage: create_symlinks $SRC_BIN_DIR $DST_BIN_DIR
 function create_symlinks() {
-    echo
+    local src_bin_dir
+    local dst_bin_dir
+    local bin_file
+    local short_bin_file
+
+    src_bin_dir="$1"
+    dst_bin_dir="$2"
+
+    if [[ ! -d "$src_bin_dir" ]]; then
+        echo "ERROR: $src_bin_dir does not exit, exiting ..."
+        exit 1
+    fi
+
+    if [[ ! -d "$dst_bin_dir" ]]; then
+        echo "ERROR: $dst_bin_dir does not exit, exiting ..."
+        exit 1
+    fi
+
+    for bin_file in "$src_bin_dir"/*; do
+        short_bin_file="$(basename $bin_file)"
+        if [[ ! -f "$dst_bin_dir/$short_bin_file" ]]; then
+            echo "Found commnand $short_bin_file, creating a symlink to it"
+            ln -s \
+                "$src_bin_dir/$short_bin_file" \
+                "$dst_bin_dir/$short_bin_file"
+        else
+            echo "WARNING: File $dst_bin_dir/$short_bin_file already exists, not creating a symlink"
+        fi
+    done
+
 }
 
 # usage:
@@ -32,12 +73,9 @@ function install() {
     ( \
         cd "$NPMX_BASE_DIR/npms/$npmx_pkg_name"; \
         npm install "$npmx_pkg_name"; \
-        cd "$NPMX_BASE_DIR/npms/$npmx_pkg_name/node_modules/.bin"
-        for FILE in *; do
-            ln -s \
-                "$NPMX_BASE_DIR/npms/$npmx_pkg_name/node_modules/.bin/$FILE" \
-                "$NPMX_BASE_DIR/bin/$FILE"
-        done
+        create_symlinks \
+            "$NPMX_BASE_DIR/npms/$npmx_pkg_name/node_modules/.bin" \
+            "$NPMX_BASE_DIR/bin"
     )
 }
 
@@ -52,7 +90,9 @@ fi
 NPMX_COMMAND="$1"
 NPMX_PACKAGE_NAME="$2"
 
+# do environment setup checks
 check_npmx_base_dir
+check_npmx_is_in_path
 
 if [[ "$NPMX_COMMAND" = "install" ]]; then
     install "$NPMX_PACKAGE_NAME"

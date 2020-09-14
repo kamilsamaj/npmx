@@ -9,6 +9,9 @@ share the same root `node_modules` and having many CLI tools installed globally 
 ## How does it work?
 The main idea is to install each `npm` CLI package into a separate directory under `$HOME/.npmx/npms/<npm_pkg_name>/`, find the exported binaries in `$HOME/.npmx/npms/<npm_pkg_name>/.bin/` and symlink them to a well-known path `$HOME/.npmx/bin`. Once this path is added to your `$PATH`, you'll have all CLIs easily available.
 
+## Why not just `npx run <npm_pkg_name>`?
+`npx run` targets a similar goal but to run `npx run` you need to be in the right directory with the installed package. Otherwise `npx run` will download and re-install the `npm` package, at least install it from cache. `npmx` always keeps the installed package in `$HOME/.npmx/npms/<npm_package_name/`.
+
 ## Installation
 ```bash
 git clone https://github.com/kamilsamaj/npmx.git

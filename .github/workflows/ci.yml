@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [ master ]
 
-name: 'Trigger: Push action'
+name: 'CI run'
 
 jobs:
   shellcheck:

@@ -68,7 +68,7 @@ function create_symlinks() {
             echo "Found commnand $short_bin_file, creating a symlink to it"
             ln -s \
                 "$src_bin_dir/$short_bin_file" \
-                "$dst_bin_dir/$short_bin_file"
+                "$dst_bin_dir/$short_bin_file" || true
         else
             echo "WARNING: File $dst_bin_dir/$short_bin_file already exists, not creating a symlink"
         fi
